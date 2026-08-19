@@ -52,7 +52,9 @@ Xem **[RUBRIC.md](RUBRIC.md)** để biết tiêu chí đánh giá và thang đi
 | **Python 3.10+ / Colab** | ✅ Có | Môi trường thực thi Notebook |
 | `HF_TOKEN` | ✅ Có | Stream dataset từ Hugging Face (`HackerNoon`) |
 | `GROQ_API_KEY` | ✅ Có | Coreference, NER+RE Extraction, Seed Extraction, Generator |
-| `OPENAI_API_KEY` | ⚠️ Có thể thay thế | LLM-as-a-Judge (có thể cấu hình dùng Groq hoặc OpenAI) |
+| `NVIDIA_API_KEY` | ⚠️ Tuỳ chọn | LLM-as-a-Judge qua NVIDIA OpenAI-compatible API |
+| `JINA_API_KEY` | ✅ Có cho vector retrieval | Text embeddings qua Jina API |
+| `OPENAI_API_KEY` | ⚠️ Có thể thay thế | LLM-as-a-Judge (có thể cấu hình dùng OpenAI, Groq hoặc NVIDIA) |
 
 ### Cấu hình Secrets (Colab Secrets hoặc `.env`)
 
@@ -67,8 +69,10 @@ NEO4J_DATABASE=neo4j
 GROQ_API_KEY=gsk_...
 GROQ_MODEL=llama-3.3-70b-versatile
 
-JUDGE_PROVIDER=openai               # 'openai' hoặc 'groq'
-JUDGE_MODEL=gpt-4o-mini             # hoặc llama-3.3-70b-versatile
+JUDGE_PROVIDER=nvidia               # 'openai', 'groq' hoặc 'nvidia'
+JUDGE_MODEL=nvidia/nemotron-3.5-lightning-30b-a3b
+NVIDIA_API_KEY=nvapi_...
+JINA_API_KEY=
 OPENAI_API_KEY=sk-...
 
 HF_TOKEN=hf_...                     # Hugging Face User Access Token
@@ -91,13 +95,10 @@ HF_TOKEN=hf_...                     # Hugging Face User Access Token
 # 1. Cài đặt dependencies
 pip install -r requirements.txt
 
-# 2. Pre-download embedding model
-python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
-
-# 3. Tạo file .env và điền API keys
+# 2. Tạo file .env và điền API keys
 cp .env.example .env
 
-# 4. Khởi chạy Jupyter Lab / Notebook
+# 3. Khởi chạy Jupyter Lab / Notebook
 jupyter lab Day19_GraphRAG_vs_FlatRAG_Production_Lab_Guide.ipynb
 ```
 
@@ -160,3 +161,34 @@ Học viên commit và push lên GitHub cá nhân:
 1. `Day19_GraphRAG_vs_FlatRAG_Production_Lab_Guide.ipynb` (Notebook đã chạy đầy đủ output các cell).
 2. `outputs/graphrag_eval_results.csv` và `outputs/graphrag_vs_flatrag_summary.csv`.
 3. `reports/lab_report.md` (Điền đầy đủ 2 phần: Thuyết minh kỹ thuật & Suy ngẫm cá nhân).
+
+### Offline verification
+
+Không có Neo4j hoặc API key vẫn có thể kiểm tra các contract cốt lõi và artifact mẫu:
+
+```bash
+python scripts/verify_lab.py
+python tests/test_lab_contracts.py
+```
+
+Các CSV trong `outputs/` được đánh dấu `offline fixture`; không thay thế cho benchmark live.
+
+### Self-hosted Neo4j bằng Docker
+
+Docker Compose config dùng Neo4j Community 5 và volume persistent:
+
+```bash
+docker compose -f docker-compose.neo4j.yml up -d
+docker compose -f docker-compose.neo4j.yml ps
+```
+
+Mở Neo4j Browser tại <http://localhost:7474> hoặc cấu hình notebook/local `.env`:
+
+```bash
+NEO4J_URI=neo4j://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=lab19-local-password
+NEO4J_DATABASE=neo4j
+```
+
+Dừng server nhưng giữ dữ liệu bằng `docker compose -f docker-compose.neo4j.yml down`; chỉ dùng `down -v` khi muốn xoá volume dữ liệu.

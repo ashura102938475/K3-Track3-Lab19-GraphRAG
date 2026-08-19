@@ -1,0 +1,14 @@
+# Technical Defense — Lab 19
+
+This report describes the completed live smoke run using the HackerNoon subset, NVIDIA OpenAI-compatible API, Jina embeddings, and local Neo4j. The run evaluated all five golden questions; it is still a bounded lab subset, not a 350MB production benchmark.
+
+1. **Coreference:** The conservative resolver must only replace a pronoun when one unambiguous antecedent appears in the same chunk. Company/news passages with two recently mentioned companies are intentionally left unresolved; an incorrect replacement would create a false relation and contaminate retrieval.
+2. **Entity threshold:** The intended vector candidate threshold is `0.90`, followed by lexical normalization and a guard around names. High similarity is not enough: `Apple` and `Apple Music`, or `Sam Altman` and `Steve Altman`, must remain separate when type/name evidence conflicts.
+3. **Super-nodes:** A node with degree greater than 100 contributes at most 50 most-recent edges, while the whole context is capped at 250 edges. This controls prompt growth but can hide older evidence, so temporal questions need a date-aware retrieval route.
+4. **Flat versus GraphRAG:** Flat retrieval is strongest for direct factoids where one chunk contains the answer. GraphRAG can connect separated evidence, but this live smoke run did not show a quality win: Flat mean quality dimensions were 3.8/3.8/3.4 versus GraphRAG 3.6/3.0/3.0.
+5. **Latency and tokens:** GraphRAG pays extraction, graph lookup, and traversal overhead. In the live run, average latency was 1.488s and 751.2 tokens for Flat RAG versus 9.033s and 1038.8 tokens for GraphRAG. The result is an actionable optimization signal: improve seed precision, graph evidence coverage, and context pruning before scaling.
+6. **Agent decision rejected:** An all-pairs entity comparison was rejected because its quadratic cost grows poorly. Candidate blocking, ANN retrieval, lexical guards, and audit rows are safer at scale.
+7. **Bulk ingestion:** `UNWIND $rows AS row` with batches avoids one network round trip per node or edge. Every edge retains chunk/date/evidence/confidence provenance.
+8. **Auditability:** Resolution decisions are classified as manual merge, vector merge, or guard rejection. Rejected high-similarity pairs are retained for inspection rather than silently discarded.
+9. **Failure modes:** Missing seed entities, extraction omissions, incorrect coreference, and super-node trimming can all make GraphRAG incomplete. A vector fallback and bounded self-correction route reduce, but do not eliminate, these risks.
+10. **350MB scale:** The first likely bottleneck is LLM extraction/rate limiting, followed by embedding and graph writes. Queue-based asynchronous extraction, cached results, ANN indexes, partitioned/community retrieval, and batched `UNWIND` writes are the scale path.

@@ -1,0 +1,20 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: lab19-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/lab19-local-password
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1g
+      NEO4J_server_memory_pagecache_size: 512m
+    volumes:
+      - lab19_neo4j_data:/data
+      - lab19_neo4j_logs:/logs
+
+volumes:
+  lab19_neo4j_data:
+  lab19_neo4j_logs:
